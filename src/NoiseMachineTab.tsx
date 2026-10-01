@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import Field from '@/components/Field';
 import Pick from '@/components/Pick';
-import { loadSoundFile, saveSoundFile } from './soundscape';
+import { deleteSoundFile, loadSoundFile, saveSoundFile } from './soundscape';
 import { uid } from './schedule';
 import type { SoundLayer, SoundLayerKind, SoundscapePreset } from './types';
 

@@ -26,7 +26,6 @@ function Glitch({
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 animate-glitch text-signal mix-blend-screen"
             data-slot="glitch-layer"
-            inert
             style={{ "--glitch-shift": `${shift}px` } as CSSProperties}
           >
             {children}
@@ -35,7 +34,6 @@ function Glitch({
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 animate-glitch text-azure mix-blend-screen"
             data-slot="glitch-layer"
-            inert
             style={{ "--glitch-shift": `${-shift}px` } as CSSProperties}
           >
             {children}
