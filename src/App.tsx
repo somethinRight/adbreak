@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,13 +6,13 @@ import { Textarea } from '@/components/ui/textarea';
 import Pick from '@/components/Pick';
 import BASE from './library';
 import { buildRun, findObj, mk, toMin, uid } from './schedule';
-import type { Block as BlockT, Break, MediaItem, Picker as PickerT, Schedule, Segment } from './types';
+import type { Block as BlockT, Break, MediaItem, Picker as PickerT, Schedule, Segment, SoundLayer, SoundscapePreset } from './types';
 import Block from './Block';
 import Preview from './Preview';
 import PlayerTab from './PlayerTab';
 import YouTubeBox from './YouTubeBox';
 import NoiseMachineTab from './NoiseMachineTab';
-import type { SoundLayer } from './types';
+import type { NoiseMachineHandle } from './NoiseMachineTab';
 
 const load = <T,>(k: string, d: T): T => { try { return JSON.parse(localStorage.getItem(k) ?? "null") ?? d; } catch { return d; } };
 const store = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } };
@@ -42,6 +42,7 @@ export default function App() {
   const [saved, setSaved] = useState(() => load<Record<string, Schedule>>("schedule-library-v1", {}));
   const [custom, setCustom] = useState(() => load<MediaItem[]>("custom-media-v1", []).map(normMedia));
   const [soundLayers, setSoundLayers] = useState(() => load<SoundLayer[]>("soundscape-layers-v1", []));
+  const [soundscapes, setSoundscapes] = useState(() => load<SoundscapePreset[]>("soundscape-presets-v1", []));
   const [soundGain, setSoundGain] = useState(() => load("soundscape-gain-v1", 1));
   const [seed, setSeed] = useState(0);
   const [tab, setTab] = useState("builder");
@@ -50,18 +51,25 @@ export default function App() {
   const [playSm, setPlaySm] = useState<number | null>(null);
   const [runKey, setRunKey] = useState(0);
   const [json, setJson] = useState<string | null>(null);
+  const noiseMachineRef = useRef<NoiseMachineHandle>(null);
 
   const lib = useMemo(() => [...BASE, ...custom], [custom]);
   const tags = useMemo(() => [...new Set(lib.flatMap(m => m.tags))].sort(), [lib]);
   const result = useMemo(() => buildRun(S, lib), [S, lib, seed]);
   const sm = toMin(S.start) || 0;
   // The player runs a frozen copy of the run, so editing the builder never interrupts playback.
-  const startRun = (run: Segment[]) => { if (!run.length) return; setPlayRun(run); setPlaySm(sm); setPlayerPaused(false); setRunKey(k => k + 1); setTab("player"); };
+  const startRun = (run: Segment[]) => {
+    if (!run.length) return;
+    const preset = soundscapes.find(item => item.id === S.soundscapeId);
+    if (preset) noiseMachineRef.current?.startBroadcast(structuredClone(preset.layers));
+    setPlayRun(run); setPlaySm(sm); setPlayerPaused(false); setRunKey(k => k + 1); setTab("player");
+  };
 
   useEffect(() => store("schedule-builder-v1", S), [S]);
   useEffect(() => store("schedule-library-v1", saved), [saved]);
   useEffect(() => store("custom-media-v1", custom), [custom]);
   useEffect(() => store("soundscape-layers-v1", soundLayers), [soundLayers]);
+  useEffect(() => store("soundscape-presets-v1", soundscapes), [soundscapes]);
   useEffect(() => store("soundscape-gain-v1", soundGain), [soundGain]);
 
   const edit = (fn: (d: Schedule) => void) => setS(p => { const d = structuredClone(p); fn(d); return d; });
@@ -84,6 +92,27 @@ export default function App() {
   };
   const del = () => { if (saved[S.name] && confirm(`Delete "${S.name}"?`)) setSaved(({ [S.name]: _, ...rest }) => rest); };
   const loadJson = () => { try { const o = JSON.parse(json ?? ""); if (!Array.isArray(o.blocks)) throw 0; setS(norm(o)); setJson(null); } catch { alert("That JSON isn't a valid schedule."); } };
+  const loadSchedule = (name: string) => {
+    const schedule = saved[name];
+    if (!schedule) return;
+    const next = norm(structuredClone(schedule));
+    setS(next);
+    const preset = soundscapes.find(item => item.id === next.soundscapeId);
+    if (preset) setSoundLayers(structuredClone(preset.layers));
+  };
+  const saveSoundscape = (name: string, layers: SoundLayer[]) => {
+    const existing = soundscapes.find(preset => preset.name === name);
+    const id = existing?.id ?? "sound_" + uid();
+    const preset = { id, name, layers: structuredClone(layers) };
+    setSoundscapes(current => [...current.filter(item => item.id !== id), preset]);
+    return id;
+  };
+  const deleteSoundscape = (id: string) => {
+    if (!confirm("Delete this soundscape? Schedules using it will be unlinked.")) return;
+    setSoundscapes(current => current.filter(preset => preset.id !== id));
+    setS(current => current.soundscapeId === id ? { ...current, soundscapeId: undefined } : current);
+    setSaved(current => Object.fromEntries(Object.entries(current).map(([name, schedule]) => [name, schedule.soundscapeId === id ? { ...schedule, soundscapeId: undefined } : schedule])));
+  };
 
   const savedOptions = Object.keys(saved).map(n => ({ value: n, label: n }));
   const jsonText = json ?? JSON.stringify(S, null, 2);
@@ -106,8 +135,14 @@ export default function App() {
                 <Input aria-label="Schedule name" placeholder="Schedule name" value={S.name} onChange={e => setS({ ...S, name: e.target.value })} />
                 <label className="flex items-center justify-between gap-3 text-xs uppercase tracking-widest">Starts
                   <Input className="w-36" type="time" step="1" value={S.start} onChange={e => setS({ ...S, start: e.target.value || "18:00" })} /></label>
-                <Pick label="Saved schedules" placeholder="Saved schedules…" value={saved[S.name] ? S.name : null} options={savedOptions}
-                  onChange={v => saved[v] && setS(norm(structuredClone(saved[v])))} />
+                <Pick label="Saved schedules" placeholder="Saved schedules…" value={saved[S.name] ? S.name : null} options={savedOptions} onChange={loadSchedule} />
+                <label className="flex items-center justify-between gap-3 text-xs uppercase tracking-widest">Soundscape
+                  <select aria-label="Schedule soundscape" className="w-48 border border-[var(--phosphor-dim)] bg-background px-2 py-2 text-xs" value={S.soundscapeId ?? ""}
+                    onChange={event => { const soundscapeId = event.target.value || undefined; setS({ ...S, soundscapeId }); const preset = soundscapes.find(item => item.id === soundscapeId); if (preset) setSoundLayers(structuredClone(preset.layers)); }}>
+                    <option value="">None</option>
+                    {soundscapes.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+                  </select>
+                </label>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="primary" onClick={saveCurrent}>Save</Button>
                   <Button size="sm" variant="outline" onClick={() => setS(EMPTY)}>New</Button>
@@ -157,13 +192,14 @@ export default function App() {
         </TabsContent>
 
         <TabsContent value="noise" keepMounted className="min-h-0 overflow-hidden pt-4">
-          <NoiseMachineTab layers={soundLayers} onChange={setSoundLayers} playbackActive={Boolean(playRun) && !playerPaused} gain={soundGain} onGainChange={setSoundGain} />
+          <NoiseMachineTab ref={noiseMachineRef} layers={soundLayers} onChange={setSoundLayers} playbackActive={Boolean(playRun) && !playerPaused} gain={soundGain} onGainChange={setSoundGain}
+            presets={soundscapes} onSavePreset={saveSoundscape} onLoadPreset={id => { const preset = soundscapes.find(item => item.id === id); if (preset) setSoundLayers(structuredClone(preset.layers)); }} onDeletePreset={deleteSoundscape} />
         </TabsContent>
 
         <TabsContent value="player" keepMounted className="min-h-0 overflow-hidden pt-4">
           <PlayerTab result={result} sm={sm} playRun={playRun} playSm={playSm} runKey={runKey}
             schedules={saved} selectedSchedule={S.name}
-            onSelectSchedule={name => saved[name] && setS(norm(structuredClone(saved[name])))}
+            onSelectSchedule={loadSchedule}
             onStart={startRun} onStop={() => { setPlayRun(null); setPlayerPaused(true); }} onPlayerPause={setPlayerPaused} onReroll={() => setSeed(x => x + 1)} />
         </TabsContent>
       </Tabs>

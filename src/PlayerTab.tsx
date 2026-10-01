@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Maximize, Minimize } from 'lucide-react';
+import { Maximize, Minimize, Volume2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Slider } from '@/components/ui/slider';
 import Pick from '@/components/Pick';
 import { clock, fmt, joinLive } from './schedule';
 import type { RunResult, Schedule, Segment } from './types';
@@ -16,7 +17,7 @@ const VARIANT = { ad: "amber", gap: "outline", program: "default" } as const;
 
 /** Executes a run: programming parts, then ad breaks, then back to the video at the exact resume point. */
 function Player({ run, sm, onStop, onCur, onPauseChange }: { run: Segment[]; sm: number; onStop: () => void; onCur: (i: number) => void; onPauseChange: (paused: boolean) => void }) {
-  const [cur, setCur] = useState(0), [prog, setProg] = useState(0), [paused, setPaused] = useState(false), [speed, setSpeed] = useState(30), [rk, setRk] = useState(0), [fullscreen, setFullscreen] = useState(false);
+  const [cur, setCur] = useState(0), [prog, setProg] = useState(0), [paused, setPaused] = useState(false), [speed, setSpeed] = useState(30), [rk, setRk] = useState(0), [fullscreen, setFullscreen] = useState(false), [volume, setVolume] = useState(1);
   const frame = useRef<HTMLIFrameElement>(null), vid = useRef<HTMLVideoElement>(null), stage = useRef<HTMLDivElement>(null), yt = useRef(-1), got = useRef(false), R = useRef({ cur: 0, paused: false, speed: 30 });
   R.current = { cur, paused, speed };
   const s = run[cur];
@@ -72,11 +73,17 @@ function Player({ run, sm, onStop, onCur, onPauseChange }: { run: Segment[]; sm:
     else if (vid.current) vid.current.paused ? vid.current.play() : vid.current.pause();
     else setPaused(p => !p);
   };
+  const changeVolume = (value: number) => {
+    const next = Math.max(0, Math.min(1, value));
+    setVolume(next);
+    if (vid.current) vid.current.volume = next;
+    frame.current?.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "setVolume", args: [Math.round(next * 100)] }), "*");
+  };
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void stage.current?.requestFullscreen();
   };
-  const q = new URLSearchParams({ enablejsapi: "1", origin: window.location.origin, autoplay: "1", controls: "0", rel: "0", playsinline: "1", start: String(Math.floor(s.from * 60)), end: String(Math.ceil(s.to * 60)) });
+  const q = new URLSearchParams({ enablejsapi: "1", origin: window.location.origin, autoplay: "1", controls: "1", rel: "0", playsinline: "1", start: String(Math.floor(s.from * 60)), end: String(Math.ceil(s.to * 60)) });
   const next = run[cur + 1], back = s.kind === "ad" ? run.slice(cur + 1).find(r => r.kind !== "ad" && r.kind !== "gap") : null;
   return (
     <Card accent={s.kind === "ad" ? "var(--amber)" : s.kind === "gap" ? "var(--phosphor-dim)" : undefined}>
@@ -84,12 +91,12 @@ function Player({ run, sm, onStop, onCur, onPauseChange }: { run: Segment[]; sm:
         <div className="flex items-center gap-2"><Badge variant={VARIANT[s.kind]}>{LABEL[s.kind]}</Badge><strong className="min-w-0 truncate">{s.title}</strong></div>
         <div className="player-frame relative aspect-video w-full shrink-0 overflow-hidden bg-black">
           {s.yt ? (
-            <iframe key={`${cur}-${rk}`} ref={frame} title={s.title} className="absolute inset-0 size-full border-0 pointer-events-none" referrerPolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
+            <iframe key={`${cur}-${rk}`} ref={frame} title={s.title} className="absolute inset-0 size-full border-0" referrerPolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
               src={`https://www.youtube-nocookie.com/embed/${s.yt}?${q}`}
-              onLoad={() => { frame.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "*"); keepScroll(); }} />
+              onLoad={() => { frame.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "*"); frame.current?.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "setVolume", args: [Math.round(volume * 100)] }), "*"); keepScroll(); }} />
           ) : s.url ? (
             <video key={`${cur}-${rk}`} ref={vid} src={s.url} controls autoPlay className="absolute inset-0 size-full"
-              onLoadedMetadata={e => { e.currentTarget.currentTime = s.from * 60; e.currentTarget.play().catch(() => {}); }}
+              onLoadedMetadata={e => { e.currentTarget.currentTime = s.from * 60; e.currentTarget.volume = volume; e.currentTarget.play().catch(() => {}); }}
               onTimeUpdate={e => { const t = e.currentTarget.currentTime / 60; setProg((t - s.from) / s.dur); if (t >= s.to) go(cur + 1); }}
               onEnded={() => go(cur + 1)} onPlay={() => setPaused(false)} onPause={() => setPaused(true)} />
           ) : (
@@ -112,6 +119,10 @@ function Player({ run, sm, onStop, onCur, onPauseChange }: { run: Segment[]; sm:
           <Button size="icon-sm" variant="outline" title={fullscreen ? "Exit fullscreen" : "Enter fullscreen"} aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"} onClick={toggleFullscreen}>
             {fullscreen ? <Minimize /> : <Maximize />}
           </Button>
+          {(s.url || s.yt) && <div className="flex w-36 items-center gap-2" aria-label="Video volume">
+            <Volume2 className="size-4 shrink-0 text-[var(--phosphor-dim)]" aria-hidden="true" />
+            <Slider min={0} max={100} step={1} value={[Math.round(volume * 100)]} onValueChange={value => changeVolume((Array.isArray(value) ? value[0] ?? 0 : value) / 100)} aria-label="Video volume" />
+          </div>}
           {!s.url && !s.yt && s.kind !== "gap" && <Pick size="sm" className="w-20" label="Simulation speed" value={String(speed)} options={[1, 30, 120].map(x => ({ value: String(x), label: x + "x" }))} onChange={v => setSpeed(+v)} />}
         </div>
         {(() => {

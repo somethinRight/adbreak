@@ -17,12 +17,13 @@ export interface Break { id: string; pos: number; every: number; slots: Picker[]
 export interface Block extends Picker { at: string; total: number; adSlots: Picker[]; legacyBreaks?: Break[] }
 /** Blocks, breaks, and ad slots share edit helpers. */
 export type Node = Block | Picker;
-export interface Schedule { name: string; start: string; blocks: Block[] }
+export interface Schedule { name: string; start: string; blocks: Block[]; soundscapeId?: string }
 
 export interface MediaItem { id: string; title: string; type: string; tags: string[]; seconds: number; adBreaksSeconds?: number[]; date?: string; url?: string; yt?: string; thumbnail?: string; showTitle?: string; episodeName?: string; seasonNumber?: number; episodeNumber?: number }
 
 export type SoundLayerKind = "file" | "white" | "pink" | "brown" | "tone" | "rain" | "thunder" | "spaceship";
 export interface SoundLayer { id: string; name: string; kind: SoundLayerKind; volume: number; enabled: boolean; frequency?: number; density?: number; falloff?: number; lowPassHz?: number; midPassHz?: number; highPassHz?: number }
+export interface SoundscapePreset { id: string; name: string; layers: SoundLayer[] }
 
 /** One playable piece of a run: a part of a program, an ad, or off-air filler. Times are in minutes. */
 export interface Segment {

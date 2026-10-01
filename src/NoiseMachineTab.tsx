@@ -1,16 +1,17 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { AudioLines, Pause, Play, Plus, Trash2, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import Field from '@/components/Field';
 import Pick from '@/components/Pick';
-import { deleteSoundFile, loadSoundFile, saveSoundFile } from './soundscape';
+import { loadSoundFile, saveSoundFile } from './soundscape';
 import { uid } from './schedule';
-import type { SoundLayer, SoundLayerKind } from './types';
+import type { SoundLayer, SoundLayerKind, SoundscapePreset } from './types';
 
-interface Props { layers: SoundLayer[]; onChange: (layers: SoundLayer[]) => void; playbackActive: boolean }
+interface Props { layers: SoundLayer[]; onChange: (layers: SoundLayer[]) => void; playbackActive: boolean; gain: number; onGainChange: (gain: number) => void; presets: SoundscapePreset[]; onSavePreset: (name: string, layers: SoundLayer[]) => string; onLoadPreset: (id: string) => void; onDeletePreset: (id: string) => void }
+export interface NoiseMachineHandle { startBroadcast: (layers: SoundLayer[]) => void }
 type PlaybackMode = "off" | "broadcast" | "independent";
 const GENERATORS: SoundLayerKind[] = ["rain", "thunder", "spaceship", "white", "pink", "brown", "tone"];
 const TITLES: Record<SoundLayerKind, string> = { file: "Audio file", white: "White noise", pink: "Pink noise", brown: "Brown noise", tone: "Tone", rain: "Rain", thunder: "Thunder", spaceship: "Spaceship clang" };
@@ -108,13 +109,18 @@ function makeEventBuffer(context: AudioContext, layer: SoundLayer) {
   return buffer;
 }
 
-export default function NoiseMachineTab({ layers, onChange, playbackActive }: Props) {
+const NoiseMachineTab = forwardRef<NoiseMachineHandle, Props>(function NoiseMachineTab({ layers, onChange, playbackActive, gain, onGainChange, presets, onSavePreset, onLoadPreset, onDeletePreset }, ref) {
   const [generator, setGenerator] = useState<SoundLayerKind>("pink");
   const [playbackMode, setPlaybackMode] = useState<PlaybackMode>("off");
+  const [presetName, setPresetName] = useState("");
+  const [selectedPresetId, setSelectedPresetId] = useState("");
   const [error, setError] = useState("");
   const contextRef = useRef<AudioContext | null>(null);
   const gainsRef = useRef(new Map<string, GainNode>());
+  const filtersRef = useRef(new Map<string, { low: BiquadFilterNode; mid: BiquadFilterNode; high: BiquadFilterNode }>());
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<GainNode | null>(null);
+  const masterGainRef = useRef<GainNode | null>(null);
   const gateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playbackModeRef = useRef(playbackMode);
   playbackModeRef.current = playbackMode;
@@ -126,15 +132,20 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
     let cancelled = false;
     const sources: AudioScheduledSourceNode[] = [];
     const gains = new Map<string, GainNode>();
+    const filters = new Map<string, { low: BiquadFilterNode; mid: BiquadFilterNode; high: BiquadFilterNode }>();
     let master: DynamicsCompressorNode | undefined;
+    let masterGain: GainNode | undefined;
     let output: GainNode | undefined;
 
     const build = async () => {
       try {
         master = context.createDynamicsCompressor();
+        masterGain = context.createGain();
         output = context.createGain();
         output.gain.value = playbackModeRef.current === "independent" || playbackActive ? 1 : 0;
-        master.connect(output);
+        masterGain.gain.value = Math.max(0, Math.min(3, gain));
+        master.connect(masterGain);
+        masterGain.connect(output);
         output.connect(context.destination);
         for (const layer of layers.filter(item => item.enabled)) {
           let source: AudioBufferSourceNode | OscillatorNode;
@@ -165,35 +176,42 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
           const gain = context.createGain();
           gain.gain.value = layer.volume * (layer.kind === "thunder" ? 2.5 : 1);
           source.connect(gain);
-          if (layer.kind === "white" || layer.kind === "pink" || layer.kind === "brown") {
-            const filter = context.createBiquadFilter();
-            filter.type = "lowpass";
-            filter.frequency.value = layer.frequency ?? 6000;
+          const low = context.createBiquadFilter();
+          low.type = "lowpass";
+          low.frequency.value = layer.lowPassHz ?? 500;
+          low.Q.value = Math.SQRT1_2;
+          const mid = context.createBiquadFilter();
+          mid.type = "bandpass";
+          mid.frequency.value = layer.midPassHz ?? 1500;
+          mid.Q.value = 0.7;
+          const high = context.createBiquadFilter();
+          high.type = "highpass";
+          high.frequency.value = layer.highPassHz ?? 3000;
+          high.Q.value = Math.SQRT1_2;
+          for (const filter of [low, mid, high]) {
+            const band = context.createGain();
+            band.gain.value = 1;
             gain.connect(filter);
-            filter.connect(master);
-          } else if (layer.kind === "rain" || layer.kind === "thunder") {
-            const filter = context.createBiquadFilter();
-            filter.type = layer.kind === "rain" ? "highpass" : "lowpass";
-            filter.frequency.value = layer.kind === "rain" ? Math.max(400, layer.frequency ?? 5000) : Math.max(40, layer.frequency ?? 180);
-            filter.Q.value = layer.kind === "rain" ? 0.7 : 0.35;
-            gain.connect(filter);
-            filter.connect(master);
-          } else {
-            gain.connect(master);
+            filter.connect(band);
+            band.connect(master);
           }
+          filters.set(layer.id, { low, mid, high });
           sources.push(source);
           gains.set(layer.id, gain);
           source.start();
         }
         if (!cancelled) {
           gainsRef.current = gains;
+          filtersRef.current = filters;
           outputRef.current = output ?? null;
+          masterGainRef.current = masterGain ?? null;
           setError("");
         }
       } catch (cause) {
         sources.forEach(source => { try { source.stop(); } catch { /* A source may not have started yet. */ } source.disconnect(); });
         gains.forEach(gain => gain.disconnect());
         master?.disconnect();
+        masterGain?.disconnect();
         output?.disconnect();
         if (!cancelled) setError(cause instanceof Error ? cause.message : "Audio could not be started.");
       }
@@ -204,10 +222,14 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
       cancelled = true;
       sources.forEach(source => { try { source.stop(); } catch { /* A source may not have started yet. */ } source.disconnect(); });
       gains.forEach(gain => gain.disconnect());
+      filters.forEach(({ low, mid, high }) => { low.disconnect(); mid.disconnect(); high.disconnect(); });
       master?.disconnect();
+      masterGain?.disconnect();
       output?.disconnect();
       if (outputRef.current === output) outputRef.current = null;
+      if (masterGainRef.current === masterGain) masterGainRef.current = null;
       gainsRef.current.clear();
+      filtersRef.current.clear();
     };
   }, [playbackMode, sourceKey]);
 
@@ -251,6 +273,25 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
     }
   }, [playbackMode, layers]);
 
+  useEffect(() => {
+    const context = contextRef.current;
+    const masterGain = masterGainRef.current;
+    if (!context || !masterGain || playbackMode === "off") return;
+    masterGain.gain.setTargetAtTime(Math.max(0, Math.min(3, gain)), context.currentTime, 0.04);
+  }, [gain, playbackMode]);
+
+  useEffect(() => {
+    const context = contextRef.current;
+    if (!context || playbackMode === "off") return;
+    for (const layer of layers) {
+      const filters = filtersRef.current.get(layer.id);
+      if (!filters) continue;
+      filters.low.frequency.setTargetAtTime(layer.lowPassHz ?? 500, context.currentTime, 0.04);
+      filters.mid.frequency.setTargetAtTime(layer.midPassHz ?? 1500, context.currentTime, 0.04);
+      filters.high.frequency.setTargetAtTime(layer.highPassHz ?? 3000, context.currentTime, 0.04);
+    }
+  }, [layers, playbackMode]);
+
   useEffect(() => () => {
     if (gateTimer.current) clearTimeout(gateTimer.current);
     void contextRef.current?.close();
@@ -263,7 +304,7 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
         : generator === "thunder" ? { frequency: 150, density: 0.22, falloff: 2.5 }
           : generator === "spaceship" ? { frequency: 280, density: 0.45, falloff: 1.2 }
             : { frequency: 6000 };
-    const layer: SoundLayer = { id: uid(), name: TITLES[generator], kind: generator, volume: 0.35, enabled: true, ...defaults };
+    const layer: SoundLayer = { id: uid(), name: TITLES[generator], kind: generator, volume: 0.35, enabled: true, lowPassHz: 500, midPassHz: 1500, highPassHz: 3000, ...defaults };
     onChange([...layers, layer]);
   };
   const addFiles = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -275,7 +316,7 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
       for (const file of files) {
         const id = uid();
         await saveSoundFile(id, file);
-        added.push({ id, name: file.name, kind: "file", volume: 0.5, enabled: true });
+        added.push({ id, name: file.name, kind: "file", volume: 0.5, enabled: true, lowPassHz: 500, midPassHz: 1500, highPassHz: 3000 });
       }
       onChange([...layers, ...added]);
       setError("");
@@ -303,13 +344,36 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
     }
   };
 
+  useImperativeHandle(ref, () => ({
+    startBroadcast: presetLayers => {
+      try {
+        const context = contextRef.current ?? new AudioContext();
+        contextRef.current = context;
+        void context.resume().catch(() => setError("Audio playback was suspended by the browser."));
+        onChange(presetLayers);
+        setPlaybackMode("broadcast");
+        setError("");
+      } catch {
+        setError("Audio playback is unavailable in this browser.");
+      }
+    },
+  }), [onChange]);
+
+  const savePreset = () => {
+    const name = presetName.trim();
+    if (!name) return;
+    const existing = presets.find(preset => preset.name === name);
+    const id = onSavePreset(name, layers);
+    setSelectedPresetId(existing?.id ?? id);
+  };
+
   return (
     <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[minmax(18rem,0.75fr)_minmax(0,1.25fr)]">
       <section className="min-h-0 space-y-4 overflow-y-auto border border-[var(--phosphor-dim)] p-4">
         <div className="flex items-center gap-3">
           <AudioLines className="size-5 text-phosphor" aria-hidden="true" />
           <div>
-            <h2 className="text-sm uppercase tracking-widest">Noise Machine</h2>
+            <h2 className="text-sm uppercase tracking-widest">Noise</h2>
             <p className="text-xs text-[var(--phosphor-dim)]">{playbackMode === "independent" ? "Independent playback" : playbackMode === "broadcast" ? playbackActive ? "Following broadcast" : "Waiting for broadcast" : "Soundscape off"}</p>
           </div>
         </div>
@@ -324,6 +388,10 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
             <AudioLines aria-hidden="true" />Independent
           </Button>
         </div>
+        <Field label={`Global gain · ${Math.round(gain * 100)}%`}>
+          <Slider min={0} max={300} step={1} value={[Math.round(Math.max(0, Math.min(3, gain)) * 100)]}
+            onValueChange={value => onGainChange((Array.isArray(value) ? value[0] ?? 100 : value) / 100)} aria-label="Global noise gain" />
+        </Field>
         <Field label="Generated sound">
           <div className="flex gap-2">
             <Pick label="Generated sound type" value={generator} options={GENERATORS.map(kind => ({ value: kind, label: TITLES[kind] }))} onChange={value => setGenerator(value as SoundLayerKind)} />
@@ -331,7 +399,21 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
           </div>
         </Field>
         <Field label="Looping audio files">
-          <Input type="file" accept="audio/*" multiple onChange={addFiles} aria-label="Add looping audio files" />
+          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+            <Plus aria-hidden="true" />Choose audio files
+          </Button>
+          <input ref={fileInputRef} className="sr-only" type="file" accept=".mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,audio/*" multiple onChange={addFiles} aria-label="Add looping audio files" />
+        </Field>
+        <Field label="Saved soundscapes">
+          <Pick label="Saved soundscapes" placeholder="Choose soundscape…" value={selectedPresetId || null} options={presets.map(preset => ({ value: preset.id, label: preset.name }))} onChange={setSelectedPresetId} />
+          <div className="mt-2 flex gap-2">
+            <Button size="sm" variant="outline" disabled={!selectedPresetId} onClick={() => onLoadPreset(selectedPresetId)}>Load</Button>
+            <Button size="sm" variant="destructive" disabled={!selectedPresetId} onClick={() => { onDeletePreset(selectedPresetId); setSelectedPresetId(""); }}>Delete</Button>
+          </div>
+          <div className="mt-2 flex gap-2">
+            <Input aria-label="Soundscape name" placeholder="Soundscape name" value={presetName} onChange={event => setPresetName(event.target.value)} />
+            <Button size="sm" variant="primary" disabled={!presetName.trim()} onClick={savePreset}>Save</Button>
+          </div>
         </Field>
         {error && <p role="alert" className="text-sm text-[var(--warning)]">{error}</p>}
       </section>
@@ -347,10 +429,10 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
               <Switch checked={layer.enabled} onCheckedChange={checked => updateLayer(layer.id, { enabled: checked })} aria-label={`Toggle ${layer.name}`} />
               <div className="min-w-0 space-y-2">
                 <div className="flex items-center gap-2"><Volume2 className="size-4 shrink-0 text-phosphor-dim" aria-hidden="true" /><span className="truncate text-sm">{layer.name}</span><span className="shrink-0 text-xs text-[var(--phosphor-dim)]">{TITLES[layer.kind]}</span></div>
-                {layer.kind === "tone" && <Field label="Frequency (Hz)"><Input type="number" min="20" max="2000" value={layer.frequency ?? 110} onChange={event => updateLayer(layer.id, { frequency: Math.max(20, Math.min(2000, Number(event.target.value) || 20)) })} /></Field>}
+                {layer.kind === "tone" && <Field label={`Tone frequency · ${layer.frequency ?? 110} Hz`}><Slider min={20} max={2000} step={1} value={[layer.frequency ?? 110]} onValueChange={value => updateLayer(layer.id, { frequency: Array.isArray(value) ? value[0] ?? 20 : value })} aria-label={`${layer.name} tone frequency`} /></Field>}
                 {layer.kind !== "file" && layer.kind !== "tone" && <>
-                  <Field label={layer.kind === "rain" ? "Droplet pitch (Hz)" : layer.kind === "thunder" ? "Rumble frequency (Hz)" : layer.kind === "spaceship" ? "Resonance (Hz)" : "Low-pass cutoff (Hz)"}>
-                    <Input type="number" min="20" max="10000" step="10" value={layer.frequency ?? (layer.kind === "thunder" ? 150 : 5000)} onChange={event => updateLayer(layer.id, { frequency: Math.max(20, Math.min(10000, Number(event.target.value) || 20)) })} />
+                  <Field label={`${layer.kind === "rain" ? "Droplet pitch" : layer.kind === "thunder" ? "Rumble frequency" : layer.kind === "spaceship" ? "Resonance" : "Noise frequency"} · ${layer.frequency ?? (layer.kind === "thunder" ? 150 : 5000)} Hz`}>
+                    <Slider min={20} max={10000} step={10} value={[layer.frequency ?? (layer.kind === "thunder" ? 150 : 5000)]} onValueChange={value => updateLayer(layer.id, { frequency: Array.isArray(value) ? value[0] ?? 20 : value })} aria-label={`${layer.name} frequency`} />
                   </Field>
                   {(layer.kind === "rain" || layer.kind === "thunder" || layer.kind === "spaceship") && <>
                     <Field label={`Event density · ${layer.density ?? 1}/sec`}>
@@ -361,6 +443,17 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
                     </Field>
                   </>}
                 </>}
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <Field label={`Low-pass · ${layer.lowPassHz ?? 500} Hz`}>
+                    <Slider min={20} max={20000} step={10} value={[layer.lowPassHz ?? 500]} onValueChange={value => updateLayer(layer.id, { lowPassHz: Array.isArray(value) ? value[0] ?? 20 : value })} aria-label={`${layer.name} low-pass cutoff`} />
+                  </Field>
+                  <Field label={`Mid-pass · ${layer.midPassHz ?? 1500} Hz`}>
+                    <Slider min={20} max={20000} step={10} value={[layer.midPassHz ?? 1500]} onValueChange={value => updateLayer(layer.id, { midPassHz: Array.isArray(value) ? value[0] ?? 20 : value })} aria-label={`${layer.name} mid-pass center`} />
+                  </Field>
+                  <Field label={`High-pass · ${layer.highPassHz ?? 3000} Hz`}>
+                    <Slider min={20} max={20000} step={10} value={[layer.highPassHz ?? 3000]} onValueChange={value => updateLayer(layer.id, { highPassHz: Array.isArray(value) ? value[0] ?? 20 : value })} aria-label={`${layer.name} high-pass cutoff`} />
+                  </Field>
+                </div>
                 <Slider min={0} max={100} step={1} value={[Math.round(layer.volume * 100)]} onValueChange={value => updateLayer(layer.id, { volume: (Array.isArray(value) ? value[0] ?? 0 : value) / 100 })} aria-label={`${layer.name} volume`} />
               </div>
               <Button size="icon-sm" variant="ghost" aria-label={`Remove ${layer.name}`} title={`Remove ${layer.name}`} onClick={() => void removeLayer(layer)}><Trash2 /></Button>
@@ -371,4 +464,6 @@ export default function NoiseMachineTab({ layers, onChange, playbackActive }: Pr
       </section>
     </div>
   );
-}
+});
+
+export default NoiseMachineTab;
