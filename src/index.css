@@ -5,9 +5,9 @@
 /* `npx shadcn@latest add @afterglow/...` merges the Afterglow theme (tokens, fonts, keyframes) into this file. */
 
 html { background: var(--void, #050807); }
-body { margin: 0; min-height: 100vh; background: var(--void, #050807); color: var(--phosphor, #7dffb2); font-family: var(--font-mono, ui-monospace, monospace); }
-
-.player-content:fullscreen { height: 100dvh; width: 100vw; overflow-y: auto; background: var(--void); padding: 1rem; }
+body { margin: 0; max-height: 100vh; min-height: 100vh; background: var(--void, #050807); color: var(--phosphor, #7dffb2); font-family: var(--font-mono, ui-monospace, monospace); }
+#root {margin: 0; min-height: 100%; max-height: 100vh;}
+.player-content:fullscreen { height: 100vh; height: 100dvh; width: 100vw; overflow-y: auto; background: var(--void); padding: 1rem; }
 
 @theme inline { --background-image-beam: linear-gradient(180deg, transparent 44%, color-mix(in srgb, var(--phosphor) 16%, transparent) 50%, transparent 56%); --background-image-window-grip: repeating-linear-gradient(-45deg, transparent 0 2px, var(--window-grip) 2px 3px); --background-image-window-titlebar: repeating-linear-gradient(var(--window-titlebar-light) 0 1px, var(--window-titlebar-dark) 1px 3px); --font-heading: var(--font-mono); --font-mono: var(--afterglow-font-mono, ui-monospace, monospace); --font-sans: var(--afterglow-font-sans, ui-sans-serif, sans-serif); --text-1xs: 0.6875rem; --text-2xs: 0.625rem; --text-3xs: 0.5625rem; --text-4xs: 0.55rem; --tracking-terminal: 0.1em; --tracking-terminal-2xl: 0.16em; --tracking-terminal-3xl: 0.18em; --tracking-terminal-lg: 0.12em; --tracking-terminal-sm: 0.08em; --tracking-terminal-xl: 0.14em; --tracking-terminal-xs: 0.06em; --color-amber: var(--amber); --color-azure: var(--azure); --color-ember: var(--ember); --color-ink: var(--ink); --color-ink-muted: var(--ink-muted); --color-line: var(--line); --color-line-strong: var(--line-strong); --color-panel: var(--panel); --color-panel-raised: var(--panel-raised); --color-panel-sunken: var(--panel-sunken); --color-phosphor: var(--phosphor); --color-phosphor-bright: var(--phosphor-bright); --color-phosphor-dim: var(--phosphor-dim); --color-signal: var(--signal); --color-signal-soft: var(--signal-soft); --color-violet: var(--violet); --color-void: var(--void); --color-window-bevel-dark: var(--window-bevel-dark); --color-window-bevel-light: var(--window-bevel-light); --color-window-border: var(--window-border); --color-window-close: var(--window-close); --color-window-collapse: var(--window-collapse); --color-window-control: var(--window-control); --color-window-footer: var(--window-footer); --color-window-footer-text: var(--window-footer-text); --color-window-grip: var(--window-grip); --color-window-inset: var(--window-inset); --color-window-rule: var(--window-rule); --color-window-surface: var(--window-surface); --color-window-text: var(--window-text); --color-window-text-muted: var(--window-text-muted); --color-window-titlebar-dark: var(--window-titlebar-dark); --color-window-titlebar-light: var(--window-titlebar-light); --color-window-zoom: var(--window-zoom); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-background: var(--background); --color-border: var(--border); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3); --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5); --color-destructive: var(--destructive); --color-destructive-foreground: var(--destructive-foreground); --color-foreground: var(--foreground); --color-info: var(--info); --color-input: var(--input); --color-metric: var(--metric); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-ring: var(--ring); --color-scrim: var(--scrim); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-sidebar: var(--sidebar); --color-sidebar-accent: var(--sidebar-accent); --color-sidebar-accent-foreground: var(--sidebar-accent-foreground); --color-sidebar-border: var(--sidebar-border); --color-sidebar-foreground: var(--sidebar-foreground); --color-sidebar-primary: var(--sidebar-primary); --color-sidebar-primary-foreground: var(--sidebar-primary-foreground); --color-sidebar-ring: var(--sidebar-ring); --color-warning: var(--warning); --animate-alarm: terminal-alarm 2.4s var(--ease-terminal) infinite; --animate-beam: terminal-beam 1s var(--ease-terminal) both; --animate-caret: terminal-caret 1.1s steps(1) infinite; --animate-chart-in: terminal-chart-in 260ms steps(6, end) both; --animate-close: terminal-close 120ms steps(3, end) forwards; --animate-fade-in: terminal-fade-in 140ms ease-out; --animate-fade-out: terminal-fade-out 120ms ease-in forwards; --animate-flicker: terminal-flicker 3.7s steps(1) infinite; --animate-glitch: terminal-glitch 1.9s steps(1) infinite; --animate-glyph: terminal-glyph 800ms steps(4) infinite; --animate-jitter: terminal-jitter 260ms steps(1) infinite; --animate-led: terminal-led 1.6s steps(2) infinite; --animate-line-in: terminal-line-in 420ms var(--ease-terminal) both; --animate-open: terminal-open 180ms steps(4, end); --animate-pixel: terminal-pixel 800ms linear infinite; --animate-power-line-in: terminal-power-line-in 590ms var(--ease-terminal) both; --animate-power-line-out: terminal-power-line-out 620ms var(--ease-terminal) both; --animate-power-off: terminal-power-off 260ms var(--ease-terminal) both; --animate-power-on: terminal-power-on 440ms var(--ease-terminal) 150ms both; --animate-roll: terminal-roll 6.5s linear infinite; --animate-select-fold-in-down: terminal-select-fold-in-down 140ms steps(4, end); --animate-select-fold-in-up: terminal-select-fold-in-up 140ms steps(4, end); --animate-select-fold-out-down: terminal-select-fold-out-down 100ms steps(3, end) forwards; --animate-select-fold-out-up: terminal-select-fold-out-up 100ms steps(3, end) forwards; --animate-slide-in-bottom: terminal-slide-in-bottom 220ms var(--ease-terminal); --animate-slide-in-left: terminal-slide-in-left 220ms var(--ease-terminal); --animate-slide-in-right: terminal-slide-in-right 220ms var(--ease-terminal); --animate-slide-in-top: terminal-slide-in-top 220ms var(--ease-terminal); --animate-slide-out-bottom: terminal-slide-out-bottom 170ms var(--ease-terminal) forwards; --animate-slide-out-left: terminal-slide-out-left 170ms var(--ease-terminal) forwards; --animate-slide-out-right: terminal-slide-out-right 170ms var(--ease-terminal) forwards; --animate-slide-out-top: terminal-slide-out-top 170ms var(--ease-terminal) forwards; --animate-sweep: terminal-sweep 1.15s ease-in-out infinite; --animate-toast-in: terminal-toast-in 180ms steps(3, end) both; --animate-toast-out: terminal-toast-out 100ms steps(2, end) forwards; --animate-type: terminal-type 560ms steps(24) both; --ease-terminal: cubic-bezier(0.2, 0.7, 0.3, 1); --radius-2xl: 0px; --radius-lg: 0px; --radius-md: 0px; --radius-sm: 0px; --radius-xl: 0px; --shadow-glow: 0 0 18px color-mix(in srgb, var(--phosphor) 18%, transparent); --shadow-glow-current: 0 0 8px currentColor; --shadow-glow-destructive: 0 0 18px color-mix(in srgb, var(--destructive) 20%, transparent); --shadow-glow-line: 0 0 16px 1px color-mix(in srgb, var(--phosphor) 55%, transparent); --shadow-glow-progress: 0 0 12px color-mix(in srgb, var(--phosphor) 50%, transparent); --shadow-glow-signal: 0 0 34px 2px color-mix(in srgb, var(--signal) 55%, transparent); --shadow-glow-slider: 0 0 10px color-mix(in srgb, var(--phosphor) 35%, transparent); --shadow-glow-slider-hover: 0 0 14px color-mix(in srgb, var(--phosphor) 60%, transparent); --shadow-glow-slider-track: 0 0 10px color-mix(in srgb, var(--phosphor) 45%, transparent); --shadow-glow-strong: 0 0 34px 2px color-mix(in srgb, var(--phosphor) 40%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--phosphor) 20%, transparent); --shadow-kbd: 0 2px 0 rgb(0 0 0 / 0.45); --shadow-panel: 0 2rem 5rem rgb(0 0 0 / 0.7), 0 0 50px color-mix(in srgb, var(--phosphor) 8%, transparent); --shadow-panel-signal: 0 2rem 5rem rgb(0 0 0 / 0.7), 0 0 50px color-mix(in srgb, var(--signal) 10%, transparent); --shadow-signal-control: inset 0 0 0 1px rgb(255 255 255 / 0.12), 0 0 18px color-mix(in srgb, var(--signal) 12%, transparent); --shadow-window: 0 2rem 8rem #000; --text-shadow-phosphor: 0 0 8px color-mix(in srgb, var(--phosphor) 35%, transparent); --text-shadow-signal: 0 0 10px rgb(255 91 130 / 0.45); --radius-3xl: calc(var(--radius) * 2.2); --radius-4xl: calc(var(--radius) * 2.6);
   @keyframes terminal-alarm {
@@ -356,7 +356,7 @@ body { margin: 0; min-height: 100vh; background: var(--void, #050807); color: va
 @layer base {
   ::selection {
     background: var(--signal);
-    color: #fff; }
+    color: var(--void); }
   :root {
     color-scheme: dark;
     scrollbar-color: var(--phosphor-dim) transparent;
@@ -375,6 +375,36 @@ body { margin: 0; min-height: 100vh; background: var(--void, #050807); color: va
   html {
     overflow-y: scroll;
     scrollbar-gutter: stable; } }
+
+@layer base {
+  [data-phosphor="purple"] {
+    /* #0c0614 (Matrix Purple-Black) */
+    --background: 266 54% 5%;         
+    
+    /* #b176ff (Glowing Violet Phosphor) */
+    --foreground: 266 100% 73%;       
+    
+    /* #b176ff (Main Emission Text Color) */
+    --primary: 266 100% 73%;          
+    --primary-foreground: 266 54% 5%;
+    
+    /* #2e1747 (Selection / Code Block Highlights) */
+    --accent: 266 51% 19%;            
+    --accent-foreground: 266 100% 85%;
+    
+    /* #48256e (Terminal Grid Borders) */
+    --border: 266 49% 29%;            
+    --input: 266 49% 29%;
+    
+    /* Focus state outer glow */
+    --ring: 266 100% 73%;             
+    
+    /* Muted states for helper texts */
+    --muted: 266 30% 50%;
+    --muted-foreground: 266 35% 65%;
+  }
+}
+
 
 @layer components {
   .typeset {

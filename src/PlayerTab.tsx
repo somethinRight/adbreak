@@ -89,7 +89,7 @@ function Player({ run, sm, onStop, onCur, onPauseChange }: { run: Segment[]; sm:
     <Card accent={s.kind === "ad" ? "var(--amber)" : s.kind === "gap" ? "var(--phosphor-dim)" : undefined}>
       <CardContent ref={stage} className="player-content flex h-full min-h-0 flex-col gap-3">
         <div className="flex items-center gap-2"><Badge variant={VARIANT[s.kind]}>{LABEL[s.kind]}</Badge><strong className="min-w-0 truncate">{s.title}</strong></div>
-        <div className="player-frame relative aspect-video w-full shrink-0 overflow-hidden bg-black">
+        <div className="player-frame relative aspect-video w-full shrink-0 overflow-hidden bg-void">
           {s.yt ? (
             <iframe key={`${cur}-${rk}`} ref={frame} title={s.title} className="absolute inset-0 size-full border-0" referrerPolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
               src={`https://www.youtube-nocookie.com/embed/${s.yt}?${q}`}

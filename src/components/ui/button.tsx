@@ -26,7 +26,7 @@ const buttonVariants = cva(
         default:
           "border-line bg-secondary text-phosphor hover:border-line-strong hover:bg-accent hover:text-phosphor-bright hover:shadow-glow active:bg-accent active:text-phosphor",
         destructive:
-          "border-destructive bg-destructive/15 text-destructive hover:bg-destructive hover:text-white active:bg-destructive/70 active:text-white",
+          "border-destructive bg-destructive/15 text-destructive hover:bg-destructive hover:text-destructive-foreground active:bg-destructive/70 active:text-destructive-foreground",
         ghost:
           "text-muted-foreground hover:bg-accent/50 hover:text-phosphor active:bg-accent active:text-phosphor-bright",
         link: "text-phosphor underline-offset-4 hover:underline active:text-phosphor-bright",

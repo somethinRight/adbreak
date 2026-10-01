@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AudioLines, CalendarDays, Library, Play, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,6 +17,8 @@ import type { NoiseMachineHandle } from './NoiseMachineTab';
 
 const load = <T,>(k: string, d: T): T => { try { return JSON.parse(localStorage.getItem(k) ?? "null") ?? d; } catch { return d; } };
 const store = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } };
+const PHOSPHOR_COLORS = ["green", "orange", "yellow", "cyan", "blue", "magenta", "purple", "red", "grey"] as const;
+type PhosphorColor = (typeof PHOSPHOR_COLORS)[number];
 const EMPTY: Schedule = { name: "", start: "18:00", blocks: [] };
 const normPicker = (raw: Record<string, any>): PickerT => ({ ...raw, id: raw.id ?? uid(), kind: raw.kind === "program" ? "program" : "ad", mediaId: raw.mediaId ?? "",
   mode: raw.mode === "type" || raw.mode === "tags" ? "filter" : raw.mode ?? "filter", type: raw.mode === "tags" ? "" : raw.type ?? "",
@@ -46,6 +49,10 @@ export default function App() {
   const [soundGain, setSoundGain] = useState(() => load("soundscape-gain-v1", 1));
   const [seed, setSeed] = useState(0);
   const [tab, setTab] = useState("builder");
+  const [phosphor, setPhosphor] = useState<PhosphorColor>(() => {
+    const saved = load<string>("phosphor-color-v1", document.documentElement.dataset.phosphor ?? "green");
+    return PHOSPHOR_COLORS.includes(saved as PhosphorColor) ? saved as PhosphorColor : "green";
+  });
   const [playRun, setPlayRun] = useState<Segment[] | null>(null);
   const [playerPaused, setPlayerPaused] = useState(true);
   const [playSm, setPlaySm] = useState<number | null>(null);
@@ -71,6 +78,10 @@ export default function App() {
   useEffect(() => store("soundscape-layers-v1", soundLayers), [soundLayers]);
   useEffect(() => store("soundscape-presets-v1", soundscapes), [soundscapes]);
   useEffect(() => store("soundscape-gain-v1", soundGain), [soundGain]);
+  useEffect(() => {
+    document.documentElement.dataset.phosphor = phosphor;
+    store("phosphor-color-v1", phosphor);
+  }, [phosphor]);
 
   const edit = (fn: (d: Schedule) => void) => setS(p => { const d = structuredClone(p); fn(d); return d; });
   const set = (id: string, patch: Record<string, unknown>) => edit(d => { const f = findObj(d, id); if (f) Object.assign(f.o, patch); });
@@ -118,16 +129,17 @@ export default function App() {
   const jsonText = json ?? JSON.stringify(S, null, 2);
 
   return (
-    <main className="mx-auto flex h-dvh max-w-screen-xl flex-col overflow-hidden p-4">
+    <main className="mx-auto flex h-vh h-dvh max-w-screen-xl flex-col overflow-hidden p-4">
       <Tabs value={tab} onValueChange={v => setTab(String(v))} className="min-h-0 flex-1">
-        <TabsList className="w-full shrink-0">
-          <TabsTrigger className="flex-1" value="player">Player{playRun ? " ●" : ""}</TabsTrigger>
-          <TabsTrigger className="flex-1" value="library">Library</TabsTrigger>
-          <TabsTrigger className="flex-1" value="noise">Noise</TabsTrigger>
-          <TabsTrigger className="flex-1" value="builder">Builder</TabsTrigger>
+        <TabsList className="w-full shrink-0 justify-start">
+          <TabsTrigger className="gap-1.5 px-2.5 py-1.5" value="player"><Play aria-hidden="true" />Player{playRun ? " ●" : ""}</TabsTrigger>
+          <TabsTrigger className="gap-1.5 px-2.5 py-1.5" value="library"><Library aria-hidden="true" />Library</TabsTrigger>
+          <TabsTrigger className="gap-1.5 px-2.5 py-1.5" value="noise"><AudioLines aria-hidden="true" />Noise</TabsTrigger>
+          <TabsTrigger className="gap-1.5 px-2.5 py-1.5" value="builder"><CalendarDays aria-hidden="true" />Builder</TabsTrigger>
+          <TabsTrigger className="ml-auto gap-1.5 px-2.5 py-1.5" value="options"><Settings2 aria-hidden="true" />Options</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="builder" keepMounted className="min-h-0 overflow-hidden pt-4">
+        <TabsContent value="builder" keepMounted className="h-full min-h-0 overflow-hidden pt-4">
           <div className="grid h-full min-h-0 grid-rows-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-4 lg:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.4fr)] lg:grid-rows-1">
             <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
               <section className="space-y-3 border border-[var(--phosphor-dim)] p-3">
@@ -201,6 +213,19 @@ export default function App() {
             schedules={saved} selectedSchedule={S.name}
             onSelectSchedule={loadSchedule}
             onStart={startRun} onStop={() => { setPlayRun(null); setPlayerPaused(true); }} onPlayerPause={setPlayerPaused} onReroll={() => setSeed(x => x + 1)} />
+        </TabsContent>
+
+        <TabsContent value="options" keepMounted className="min-h-0 overflow-y-auto pt-4">
+          <section className="max-w-lg space-y-4 border border-[var(--phosphor-dim)] p-4">
+            <h2 className="text-sm uppercase tracking-widest">Display</h2>
+            <label className="flex flex-wrap items-center justify-between gap-3 text-xs uppercase tracking-widest">
+              Phosphor color
+              <select aria-label="Phosphor color" className="min-w-40 border border-[var(--phosphor-dim)] bg-background px-2 py-2 text-xs" value={phosphor}
+                onChange={event => setPhosphor(event.target.value as PhosphorColor)}>
+                {PHOSPHOR_COLORS.map(color => <option key={color} value={color}>{color}</option>)}
+              </select>
+            </label>
+          </section>
         </TabsContent>
       </Tabs>
     </main>

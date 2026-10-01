@@ -174,7 +174,7 @@ function ShellPrompt({
         autoCapitalize="off"
         autoComplete="off"
         autoCorrect="off"
-        className="min-w-0 flex-1 border-0 bg-transparent p-0 font-mono text-phosphor-bright caret-phosphor-bright outline-none placeholder:text-phosphor-dim selection:bg-signal selection:text-white focus-visible:outline-0"
+        className="min-w-0 flex-1 border-0 bg-transparent p-0 font-mono text-phosphor-bright caret-phosphor-bright outline-none placeholder:text-phosphor-dim selection:bg-signal selection:text-void focus-visible:outline-0"
         id={id}
         onChange={updateValue}
         onKeyDown={recallCommand}
