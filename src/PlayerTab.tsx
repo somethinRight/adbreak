@@ -15,11 +15,12 @@ const LABEL: Record<Segment["kind"], string> = { ad: "Ad break", gap: "Off air",
 const VARIANT = { ad: "amber", gap: "outline", program: "default" } as const;
 
 /** Executes a run: programming parts, then ad breaks, then back to the video at the exact resume point. */
-function Player({ run, sm, onStop, onCur }: { run: Segment[]; sm: number; onStop: () => void; onCur: (i: number) => void }) {
+function Player({ run, sm, onStop, onCur, onPauseChange }: { run: Segment[]; sm: number; onStop: () => void; onCur: (i: number) => void; onPauseChange: (paused: boolean) => void }) {
   const [cur, setCur] = useState(0), [prog, setProg] = useState(0), [paused, setPaused] = useState(false), [speed, setSpeed] = useState(30), [rk, setRk] = useState(0), [fullscreen, setFullscreen] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null), vid = useRef<HTMLVideoElement>(null), stage = useRef<HTMLDivElement>(null), yt = useRef(-1), got = useRef(false), R = useRef({ cur: 0, paused: false, speed: 30 });
   R.current = { cur, paused, speed };
   const s = run[cur];
+  useEffect(() => onPauseChange(paused), [onPauseChange, paused]);
   // Swapping the embed can make the browser scroll to it (focus or layout shift); put the page back.
   const keepScroll = () => {
     const y = window.scrollY;
@@ -136,12 +137,13 @@ interface Props {
   schedules: Record<string, Schedule>;
   selectedSchedule: string;
   onSelectSchedule: (name: string) => void;
+  onPlayerPause: (paused: boolean) => void;
   onStart: (run: Segment[]) => void;
   onStop: () => void;
   onReroll: () => void;
 }
 
-export default function PlayerTab({ result, sm, playRun, playSm, runKey, schedules, selectedSchedule, onSelectSchedule, onStart, onStop, onReroll }: Props) {
+export default function PlayerTab({ result, sm, playRun, playSm, runKey, schedules, selectedSchedule, onSelectSchedule, onStart, onStop, onPlayerPause, onReroll }: Props) {
   const [now, setNow] = useState(0);
   const { run, end } = result;
   const activeSm = playSm ?? sm;
@@ -150,7 +152,7 @@ export default function PlayerTab({ result, sm, playRun, playSm, runKey, schedul
     <div className="grid h-full min-h-0 grid-rows-[minmax(0,1.4fr)_minmax(8rem,0.6fr)] gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(16rem,0.75fr)] lg:grid-rows-1">
       <section className="min-h-0 min-w-0 space-y-3 overflow-y-auto pr-1">
         {playRun ? <>
-          <Player key={runKey} run={playRun} sm={activeSm} onStop={onStop} onCur={setNow} />
+          <Player key={runKey} run={playRun} sm={activeSm} onStop={onStop} onCur={setNow} onPauseChange={onPlayerPause} />
           <section className="border border-[var(--phosphor-dim)] p-3">
             <h2 className="mb-2 text-sm uppercase tracking-widest">Up next</h2>
             <div className="max-h-56 overflow-y-auto">

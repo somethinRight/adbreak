@@ -307,8 +307,11 @@ body { margin: 0; min-height: 100vh; background: var(--void, #050807); color: va
     --accent: color-mix(in oklab, var(--phosphor) 22%, #08100f);
     --accent-foreground: var(--phosphor-bright);
     --border: color-mix(in srgb, var(--phosphor) 22%, transparent);
+    --background: var(--void);
     --card: color-mix(in oklab, var(--phosphor) 6%, #070a0a);
+    --card-foreground: var(--phosphor-bright);
     --chart-1: var(--phosphor);
+    --foreground: var(--phosphor-bright);
     --input: var(--border);
     --line: var(--border);
     --line-strong: color-mix(in srgb, var(--phosphor) 55%, transparent);
@@ -319,6 +322,7 @@ body { margin: 0; min-height: 100vh; background: var(--void, #050807); color: va
     --panel-raised: color-mix(in oklab, var(--phosphor) 5%, #060909);
     --panel-sunken: color-mix(in oklab, var(--phosphor) 4%, #050808);
     --popover: var(--panel-raised);
+    --popover-foreground: var(--phosphor-bright);
     --primary: var(--phosphor);
     --ring: var(--phosphor-bright);
     --secondary: color-mix(in oklab, var(--phosphor) 9%, #080c0b);
@@ -327,8 +331,25 @@ body { margin: 0; min-height: 100vh; background: var(--void, #050807); color: va
     --sidebar-accent: var(--accent);
     --sidebar-accent-foreground: var(--phosphor-bright);
     --sidebar-border: var(--border);
+    --sidebar-foreground: var(--phosphor-bright);
     --sidebar-primary: var(--phosphor);
-    --sidebar-ring: var(--phosphor-bright); }
+    --sidebar-ring: var(--phosphor-bright);
+    --void: color-mix(in oklab, var(--phosphor) 5%, #05090a);
+    --window-bevel-dark: color-mix(in srgb, var(--phosphor) 30%, #030506);
+    --window-bevel-light: var(--phosphor-bright);
+    --window-border: var(--line-strong);
+    --window-control: var(--panel-raised);
+    --window-footer: var(--border);
+    --window-footer-text: var(--phosphor-bright);
+    --window-grip: var(--phosphor-dim);
+    --window-inset: var(--line-strong);
+    --window-rule: var(--border);
+    --window-surface: var(--panel-raised);
+    --window-text: var(--phosphor-bright);
+    --window-text-muted: var(--muted-foreground);
+    --window-titlebar-dark: var(--panel-sunken);
+    --window-titlebar-light: var(--panel);
+    --window-zoom: var(--phosphor); }
   :where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
     outline-style: solid; }
 

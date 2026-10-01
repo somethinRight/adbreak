@@ -1,5 +1,5 @@
 export type Kind = "program" | "ad";
-export type Mode = "specific" | "type" | "tags";
+export type Mode = "specific" | "filter" | "type" | "tags";
 
 /** How a block (or an ad break) chooses media. */
 export interface Picker {
@@ -12,14 +12,17 @@ export interface Picker {
   match: "any" | "all";
   count: number;
 }
-/** An ad break inside a programming block. `pos`/`every` are minutes into the media. */
-export interface Break extends Picker { pos: number; every: number }
-export interface Block extends Picker { at: string; total: number; breaks: Break[] }
-/** Blocks and breaks share edit helpers, so lookups by id return this combined shape. */
-export type Node = Block & Break;
+/** Legacy saved-schedule break timing; new timing lives on MediaItem. */
+export interface Break { id: string; pos: number; every: number; slots: Picker[] }
+export interface Block extends Picker { at: string; total: number; adSlots: Picker[]; legacyBreaks?: Break[] }
+/** Blocks, breaks, and ad slots share edit helpers. */
+export type Node = Block | Picker;
 export interface Schedule { name: string; start: string; blocks: Block[] }
 
-export interface MediaItem { id: string; title: string; type: string; tags: string[]; mins: number; date?: string; url?: string; yt?: string; thumbnail?: string }
+export interface MediaItem { id: string; title: string; type: string; tags: string[]; seconds: number; adBreaksSeconds?: number[]; date?: string; url?: string; yt?: string; thumbnail?: string; showTitle?: string; episodeName?: string; seasonNumber?: number; episodeNumber?: number }
+
+export type SoundLayerKind = "file" | "white" | "pink" | "brown" | "tone" | "rain" | "thunder" | "spaceship";
+export interface SoundLayer { id: string; name: string; kind: SoundLayerKind; volume: number; enabled: boolean; frequency?: number; density?: number; falloff?: number; lowPassHz?: number; midPassHz?: number; highPassHz?: number }
 
 /** One playable piece of a run: a part of a program, an ad, or off-air filler. Times are in minutes. */
 export interface Segment {
