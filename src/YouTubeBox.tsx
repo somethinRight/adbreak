@@ -22,6 +22,8 @@ interface Props {
   onTest: (c: MediaItem) => void;
   onAddBlock: (kind: "program" | "ad", id: string) => void;
   savedItems?: SavedLibraryItem[];
+  showForm?: boolean;
+  showLibrary?: boolean;
 }
 
 export interface SavedLibraryItem {
@@ -35,7 +37,7 @@ export interface SavedLibraryItem {
 
 type LibraryEntry = { id: string; title: string; type: string; date?: string; media: MediaItem } | ({ media?: never } & SavedLibraryItem);
 
-export default function YouTubeBox({ category, library, custom, onAdd, onAddMany, onUpdate, onRemove, onTest, onAddBlock, savedItems = [] }: Props) {
+export default function YouTubeBox({ category, library, custom, onAdd, onAddMany, onUpdate, onRemove, onTest, onAddBlock, savedItems = [], showForm = true, showLibrary = true }: Props) {
   const emptyForm: Form = { url: "", title: "", type: category === "music" ? "music" : "video", seconds: 300, adBreaks: "", tags: "", date: "", showTitle: "", seasonNumber: "", episodeNumber: "" };
   const [f, setF] = useState<Form>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -171,9 +173,11 @@ export default function YouTubeBox({ category, library, custom, onAdd, onAddMany
       seconds: c.seconds, adBreaks: c.adBreaksSeconds?.map(seconds => String(seconds / 60)).join(", ") || "", tags: c.tags.join(", "), date: c.date || "", showTitle: c.showTitle || "",
       seasonNumber: c.seasonNumber?.toString() || "", episodeNumber: c.episodeNumber?.toString() || "" });
   };
+  if (!showForm && !showLibrary) return null;
+
   return (
-    <div className="grid h-full min-h-0 grid-rows-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)] lg:grid-rows-1">
-      <section className="min-h-0 overflow-y-auto border border-[var(--phosphor-dim)] p-3">
+    <div className={`grid h-full min-h-0 ${showForm && showLibrary ? "grid-rows-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)] lg:grid-rows-1" : "grid-cols-1 grid-rows-1"}`}>
+      {showForm && <section className="min-h-0 overflow-y-auto border border-[var(--phosphor-dim)] p-3">
       <h2 className="text-sm uppercase tracking-widest">{editingId ? `Edit ${category === "music" ? "music" : "video"}` : category === "music" ? "Add music" : category === "videos" ? "Add videos" : "Add media"}</h2>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <Field className="col-span-2" label="YouTube link" htmlFor="yturl"><Input id="yturl" placeholder="https://www.youtube.com/watch?v=…" value={f.url} onChange={up("url")} /></Field>
@@ -199,9 +203,9 @@ export default function YouTubeBox({ category, library, custom, onAdd, onAddMany
         </div>
         {playlistStatus && <p aria-live="polite" className="text-xs text-[var(--phosphor-dim)]">{playlistStatus}</p>}
       </div>
-      </section>
+      </section>}
 
-      <section className="min-h-0 overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel)]/20">
+      {showLibrary && <section className="min-h-0 overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel)]/20">
         <div className="flex items-baseline justify-between border-b border-[var(--phosphor-dim)] bg-[var(--panel)]/30 px-3 py-2">
           <h2 className="text-sm uppercase tracking-widest">{category === "music" ? "Music" : category === "videos" ? "Videos" : "All media"}</h2>
           <span className="text-xs text-[var(--phosphor-dim)]">{categoryLibrary.length} items</span>
@@ -241,7 +245,7 @@ export default function YouTubeBox({ category, library, custom, onAdd, onAddMany
             </AccordionContent>
           </AccordionItem>)}
         </Accordion> : <p className="px-3 py-5 text-sm text-[var(--phosphor-dim)]">No {category === "music" ? "music" : category === "videos" ? "videos" : "media"} in the library.</p>}
-      </section>
+      </section>}
     </div>
   );
 }
