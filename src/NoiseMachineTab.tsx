@@ -369,7 +369,7 @@ const NoiseMachineTab = forwardRef<NoiseMachineHandle, Props>(function NoiseMach
 
   return (
     <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[minmax(18rem,0.75fr)_minmax(0,1.25fr)]">
-      <section className="min-h-0 space-y-4 overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel)]/20 p-4">
+      <section className="flex min-h-0 flex-col overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel)]/20 p-4">
         <div className="flex items-center gap-3">
           <AudioLines className="size-5 text-phosphor" aria-hidden="true" />
           <div>
@@ -377,7 +377,7 @@ const NoiseMachineTab = forwardRef<NoiseMachineHandle, Props>(function NoiseMach
             <p className="text-xs text-[var(--phosphor-dim)]">{playbackMode === "independent" ? "Independent playback" : playbackMode === "broadcast" ? playbackActive ? "Following broadcast" : "Waiting for broadcast" : "Soundscape off"}</p>
           </div>
         </div>
-        <div role="group" aria-label="Soundscape playback mode" className="flex flex-wrap gap-2">
+        <div role="group" aria-label="Soundscape playback mode" className="mt-4 flex flex-wrap gap-2">
           <Button variant={playbackMode === "off" ? "signal" : "outline"} onClick={() => void choosePlaybackMode("off")}>
             <Pause aria-hidden="true" />Off
           </Button>
@@ -388,42 +388,46 @@ const NoiseMachineTab = forwardRef<NoiseMachineHandle, Props>(function NoiseMach
             <AudioLines aria-hidden="true" />Independent
           </Button>
         </div>
-        <Field label={`Global gain · ${Math.round(gain * 100)}%`}>
-          <Slider min={0} max={300} step={1} value={[Math.round(Math.max(0, Math.min(3, gain)) * 100)]}
-            onValueChange={value => onGainChange((Array.isArray(value) ? value[0] ?? 100 : value) / 100)} aria-label="Global noise gain" />
-        </Field>
-        <Field label="Generated sound">
-          <div className="flex gap-2">
-            <Pick label="Generated sound type" value={generator} options={GENERATORS.map(kind => ({ value: kind, label: TITLES[kind] }))} onChange={value => setGenerator(value as SoundLayerKind)} />
-            <Button variant="outline" aria-label="Add generated sound" title="Add generated sound" onClick={addGenerator}><Plus /></Button>
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="space-y-4">
+            <Field label={`Global gain · ${Math.round(gain * 100)}%`}>
+              <Slider min={0} max={300} step={1} value={[Math.round(Math.max(0, Math.min(3, gain)) * 100)]}
+                onValueChange={value => onGainChange((Array.isArray(value) ? value[0] ?? 100 : value) / 100)} aria-label="Global noise gain" />
+            </Field>
+            <Field label="Generated sound">
+              <div className="flex gap-2">
+                <Pick label="Generated sound type" value={generator} options={GENERATORS.map(kind => ({ value: kind, label: TITLES[kind] }))} onChange={value => setGenerator(value as SoundLayerKind)} />
+                <Button variant="outline" aria-label="Add generated sound" title="Add generated sound" onClick={addGenerator}><Plus /></Button>
+              </div>
+            </Field>
+            <Field label="Looping audio files">
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Plus aria-hidden="true" />Choose audio files
+              </Button>
+              <input ref={fileInputRef} className="sr-only" type="file" accept=".mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,audio/*" multiple onChange={addFiles} aria-label="Add looping audio files" />
+            </Field>
+            <Field label="Saved soundscapes">
+              <Pick label="Saved soundscapes" placeholder="Choose soundscape…" value={selectedPresetId || null} options={presets.map(preset => ({ value: preset.id, label: preset.name }))} onChange={setSelectedPresetId} />
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" variant="outline" disabled={!selectedPresetId} onClick={() => onLoadPreset(selectedPresetId)}>Load</Button>
+                <Button size="sm" variant="destructive" disabled={!selectedPresetId} onClick={() => { onDeletePreset(selectedPresetId); setSelectedPresetId(""); }}>Delete</Button>
+              </div>
+              <div className="mt-2 flex gap-2">
+                <Input aria-label="Soundscape name" placeholder="Soundscape name" value={presetName} onChange={event => setPresetName(event.target.value)} />
+                <Button size="sm" variant="primary" disabled={!presetName.trim()} onClick={savePreset}>Save</Button>
+              </div>
+            </Field>
+            {error && <p role="alert" className="text-sm text-[var(--warning)]">{error}</p>}
           </div>
-        </Field>
-        <Field label="Looping audio files">
-          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-            <Plus aria-hidden="true" />Choose audio files
-          </Button>
-          <input ref={fileInputRef} className="sr-only" type="file" accept=".mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,audio/*" multiple onChange={addFiles} aria-label="Add looping audio files" />
-        </Field>
-        <Field label="Saved soundscapes">
-          <Pick label="Saved soundscapes" placeholder="Choose soundscape…" value={selectedPresetId || null} options={presets.map(preset => ({ value: preset.id, label: preset.name }))} onChange={setSelectedPresetId} />
-          <div className="mt-2 flex gap-2">
-            <Button size="sm" variant="outline" disabled={!selectedPresetId} onClick={() => onLoadPreset(selectedPresetId)}>Load</Button>
-            <Button size="sm" variant="destructive" disabled={!selectedPresetId} onClick={() => { onDeletePreset(selectedPresetId); setSelectedPresetId(""); }}>Delete</Button>
-          </div>
-          <div className="mt-2 flex gap-2">
-            <Input aria-label="Soundscape name" placeholder="Soundscape name" value={presetName} onChange={event => setPresetName(event.target.value)} />
-            <Button size="sm" variant="primary" disabled={!presetName.trim()} onClick={savePreset}>Save</Button>
-          </div>
-        </Field>
-        {error && <p role="alert" className="text-sm text-[var(--warning)]">{error}</p>}
+        </div>
       </section>
 
-      <section className="min-h-0 overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel)]/20">
-        <div className="mb-0 flex items-baseline justify-between border-b border-[var(--phosphor-dim)] bg-[var(--panel)]/30 px-3 py-2">
+      <section className="flex min-h-0 flex-col overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel)]/20">
+        <div className="flex items-baseline justify-between border-b border-[var(--phosphor-dim)] bg-[var(--panel)]/30 px-3 py-2">
           <h2 className="text-sm uppercase tracking-widest">Sound layers</h2>
           <span className="text-xs text-[var(--phosphor-dim)]">{layers.length}</span>
         </div>
-        <div className="divide-y divide-[var(--phosphor-dim)]/40 px-3 pb-3 pt-2">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto divide-y divide-[var(--phosphor-dim)]/40 px-3 pb-3 pt-2">
           {layers.map(layer => (
             <div key={layer.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 py-3">
               <Switch checked={layer.enabled} onCheckedChange={checked => updateLayer(layer.id, { enabled: checked })} aria-label={`Toggle ${layer.name}`} />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { Disc3, Play, Trash2 } from 'lucide-react';
+import { Disc3, Pause, Play, SkipBack, SkipForward, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { loadSoundFile, saveSoundFile, deleteSoundFile } from './soundscape';
@@ -18,13 +18,48 @@ export default function MediaExperience({ mode, library, onAddAudio, onRemove }:
   const [audioUrl, setAudioUrl] = useState('');
   const [message, setMessage] = useState('');
   const [playing, setPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [trackDuration, setTrackDuration] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const selected = entries.find(item => item.id === selectedId) ?? entries[0];
+
+  const formatClock = (value: number) => {
+    const safe = Number.isFinite(value) ? Math.max(0, value) : 0;
+    const minutes = Math.floor(safe / 60);
+    const seconds = Math.floor(safe % 60);
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  const seekTrack = (delta: number) => {
+    const audio = audioRef.current;
+    if (!audio || !Number.isFinite(audio.duration)) return;
+    audio.currentTime = Math.min(Math.max(audio.currentTime + delta, 0), audio.duration);
+  };
+
+  const togglePlayback = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      try { await audio.play(); setIsPlaying(true); }
+      catch { setMessage('Audio playback is blocked until the user interacts.'); }
+      return;
+    }
+    audio.pause();
+    setIsPlaying(false);
+  };
 
   useEffect(() => setPlaying(false), [selected?.id]);
 
   useEffect(() => {
     setAudioUrl('');
+    setCurrentTime(0);
+    setTrackDuration(selected?.seconds ?? 0);
+    setIsPlaying(false);
+    if (!audioRef.current) return;
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
     if (mode !== 'somnify' || !selected?.audioFileId) return;
     let objectUrl = '';
     let cancelled = false;
@@ -37,7 +72,32 @@ export default function MediaExperience({ mode, library, onAddAudio, onRemove }:
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [mode, selected?.audioFileId, selected?.id, selected?.title]);
+  }, [mode, selected?.audioFileId, selected?.id, selected?.seconds, selected?.title]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const syncMeta = () => {
+      setTrackDuration(Number.isFinite(audio.duration) ? audio.duration : selected?.seconds ?? 0);
+      setCurrentTime(audio.currentTime || 0);
+    };
+    const handleTime = () => setCurrentTime(audio.currentTime || 0);
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => { setIsPlaying(false); setCurrentTime(0); };
+    audio.addEventListener('loadedmetadata', syncMeta);
+    audio.addEventListener('timeupdate', handleTime);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('ended', handleEnded);
+    return () => {
+      audio.removeEventListener('loadedmetadata', syncMeta);
+      audio.removeEventListener('timeupdate', handleTime);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [selected?.id, selected?.seconds]);
 
   const addAudioFiles = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -102,13 +162,31 @@ export default function MediaExperience({ mode, library, onAddAudio, onRemove }:
         </section>
         <section className="flex min-h-0 flex-col justify-center gap-4 border border-[var(--phosphor-dim)] p-4 lg:p-6">
           {selected ? <>
-            <div className="mx-auto grid aspect-square w-full max-w-sm place-items-center border border-[var(--phosphor-dim)] bg-[var(--panel-sunken)] p-5 text-center">
-              {selected.thumbnail ? <img className="size-full object-cover" src={selected.thumbnail} alt="" /> : <div><Disc3 className="mx-auto mb-4 size-16 text-[var(--phosphor)]" /><p className="text-xs uppercase tracking-widest text-[var(--phosphor-dim)]">Somnify / Now playing</p></div>}
+            <div className="mx-auto grid aspect-square w-full max-w-sm place-items-center overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel-sunken)] p-3 text-center">
+              {selected.thumbnail ? <img className="h-full w-full object-contain" src={selected.thumbnail} alt="" /> : <div><Disc3 className="mx-auto mb-4 size-16 text-[var(--phosphor)]" /><p className="text-xs uppercase tracking-widest text-[var(--phosphor-dim)]">Somnify / Now playing</p></div>}
             </div>
             <div className="mx-auto w-full max-w-xl text-center">
               <h2 className="truncate text-lg uppercase tracking-widest">{titleOf(selected)}</h2>
               <p className="mt-1 text-xs uppercase tracking-widest text-[var(--phosphor-dim)]">{selected.tags.join(' · ') || 'Local collection'}</p>
-              <div className="mt-4">{selected.yt ? <div className="relative aspect-video overflow-hidden bg-black">{mediaFrame(selected)}</div> : selected.audioFileId ? <audio key={selected.id} className="w-full" controls autoPlay src={audioUrl} /> : selected.url ? <audio key={selected.id} className="w-full" controls autoPlay src={selected.url} /> : <p className="text-sm text-[var(--phosphor-dim)]">No audio source is available for this track.</p>}</div>
+              <div className="mt-4">
+                {selected.yt ? <div className="relative aspect-video overflow-hidden bg-black">{mediaFrame(selected)}</div> : <div className="rounded-none border border-[var(--phosphor-dim)] bg-[var(--panel-sunken)] p-3 shadow-panel">
+                  <audio ref={audioRef} className="hidden" src={audioUrl || selected.url || ''} autoPlay={false} />
+                  <div className="flex items-center gap-2">
+                    <Button size="icon-sm" variant="outline" type="button" aria-label="Rewind 10 seconds" onClick={() => seekTrack(-10)}><SkipBack className="size-3.5" /></Button>
+                    <Button size="icon-sm" variant="primary" type="button" aria-label={isPlaying ? 'Pause audio' : 'Play audio'} onClick={() => void togglePlayback()}>{isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}</Button>
+                    <Button size="icon-sm" variant="outline" type="button" aria-label="Fast forward 10 seconds" onClick={() => seekTrack(10)}><SkipForward className="size-3.5" /></Button>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-[var(--phosphor-dim)]">
+                        <span>{formatClock(currentTime)}</span>
+                        <span>{formatClock(trackDuration)}</span>
+                      </div>
+                      <div className="h-2 border border-[var(--phosphor-dim)] bg-[var(--panel)]">
+                        <div className="h-full bg-gradient-to-r from-[var(--phosphor)] via-[var(--signal)] to-[var(--phosphor-bright)] transition-[width] duration-150" style={{ width: `${trackDuration ? (currentTime / trackDuration) * 100 : 0}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>}
+              </div>
             </div>
           </> : <div className="text-center text-sm text-[var(--phosphor-dim)]">Somnify is ready when you are.</div>}
           {message && <p aria-live="polite" className="text-center text-xs text-[var(--phosphor-dim)]">{message}</p>}
