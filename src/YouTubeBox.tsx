@@ -205,7 +205,7 @@ export default function YouTubeBox({ category, library, custom, onAdd, onAddMany
       </div>
       </section>}
 
-      {showLibrary && <section className="min-h-0 overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel)]/20">
+      {showLibrary && <section className="flex min-h-0 flex-col overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel)]/20">
         <div className="flex items-baseline justify-between border-b border-[var(--phosphor-dim)] bg-[var(--panel)]/30 px-3 py-2">
           <h2 className="text-sm uppercase tracking-widest">{category === "music" ? "Music" : category === "videos" ? "Videos" : "All media"}</h2>
           <span className="text-xs text-[var(--phosphor-dim)]">{categoryLibrary.length} items</span>
@@ -215,7 +215,7 @@ export default function YouTubeBox({ category, library, custom, onAdd, onAddMany
             <Pick label="Sort media" value={organizeBy} options={[{ value: "unsorted", label: "Unsorted" }, { value: "type", label: "Type" }, { value: "year", label: "Year" }]} onChange={value => setOrganizeBy(value as "unsorted" | "type" | "year")} />
           </Field>
         </div>
-        {groups.length ? <Accordion multiple className="divide-y divide-[var(--phosphor-dim)]/40 px-3 pb-3">
+        {groups.length ? <Accordion multiple className="flex min-h-0 flex-1 flex-col divide-y divide-[var(--phosphor-dim)]/40 overflow-y-auto px-3 pb-3">
           {groups.map(([group, items]) => <AccordionItem key={group} value={group}>
             <AccordionTrigger>{group}<span className="ml-auto mr-3 text-xs text-[var(--phosphor-dim)]">{items.length}</span></AccordionTrigger>
             <AccordionContent>

@@ -53,7 +53,7 @@ export default function LoopsTab({ loops, onAdd, onRemove, onUse }: Props) {
 
   return (
     <section className="h-full min-h-0 overflow-y-auto">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--phosphor-dim)] py-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--phosphor-dim)] px-3 py-2">
         <div>
           <h2 className="text-sm uppercase tracking-widest">Audio loops</h2>
           <p className="text-xs text-[var(--phosphor-dim)]">{loops.length} saved files</p>
@@ -64,7 +64,7 @@ export default function LoopsTab({ loops, onAdd, onRemove, onUse }: Props) {
       {message && <p aria-live="polite" className="py-2 text-xs text-[var(--phosphor-dim)]">{message}</p>}
       <div className="divide-y divide-[var(--phosphor-dim)]/40">
         {loops.map(loop => (
-          <div key={loop.id} className="flex flex-wrap items-center gap-3 py-3">
+          <div key={loop.id} className="flex flex-wrap items-center gap-3 px-3 py-3">
             <AudioLines className="size-4 shrink-0 text-phosphor-dim" aria-hidden="true" />
             <span className="min-w-0 flex-1 text-sm">{loop.title}<small className="block text-xs text-[var(--phosphor-dim)]">{Math.floor(loop.seconds / 60)}:{String(loop.seconds % 60).padStart(2, '0')} · Local audio</small></span>
             <Button size="sm" variant="outline" onClick={() => onUse({ id: uid(), audioFileId: loop.audioFileId ?? loop.id, name: loop.title, kind: 'file', volume: 0.5, enabled: true, lowPassHz: 500, midPassHz: 1500, highPassHz: 3000 })}>Add to soundscape</Button>

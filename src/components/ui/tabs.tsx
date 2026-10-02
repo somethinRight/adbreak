@@ -14,7 +14,7 @@ function Tabs({
   return (
     <TabsPrimitive.Root
       className={cn(
-        "group/tabs flex gap-2 md:gap-3 data-[orientation=horizontal]:flex-col",
+        "group/tabs flex h-full min-h-0 min-w-0 gap-2 overflow-hidden md:gap-3 data-[orientation=horizontal]:flex-col",
         className
       )}
       data-slot="tabs"
@@ -44,7 +44,7 @@ function TabsList({
 }: TabsPrimitive.List.Props & VariantProps<typeof tabsListVariants>) {
   return (
     <TabsPrimitive.List
-      className={cn(tabsListVariants({ variant }), "gap-1 md:gap-1.5", className)}
+      className={cn(tabsListVariants({ variant }), "max-w-full shrink-0 gap-1 overflow-x-auto overflow-y-hidden md:gap-1.5", className)}
       data-slot="tabs-list"
       data-variant={variant}
       {...props}
@@ -73,7 +73,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
 function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
   return (
     <TabsPrimitive.Panel
-      className={cn("flex-1 animate-line-in outline-none", className)}
+      className={cn(className, "flex min-h-0 min-w-0 flex-1 !overflow-x-hidden !overflow-y-auto overscroll-contain animate-line-in outline-none")}
       data-slot="tabs-content"
       {...props}
     />
