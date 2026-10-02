@@ -49,7 +49,7 @@ export default function YouTubeBox({ category, library, custom, onAdd, onAddMany
   const isShow = f.type.trim().toLowerCase() === "show";
   const mediaTypes = useMemo(() => [...new Set(["music", "video", "movie", "show", "commercial", "bumper", "psa", ...library.map(item => item.type).filter(Boolean)])]
     .sort().map(type => ({ value: type, label: type })), [library]);
-  const groups = useMemo(() => {
+  const groups = useMemo<Array<[string, LibraryEntry[]]>>(() => {
     const base: LibraryEntry[] = [
       ...categoryLibrary.map(item => ({ id: item.id, title: item.title, type: item.type, date: item.date, media: item })),
       ...(category === "all" ? savedItems : []),
@@ -62,7 +62,7 @@ export default function YouTubeBox({ category, library, custom, onAdd, onAddMany
     const grouped = new Map<string, LibraryEntry[]>();
     if (organizeBy === "unsorted") {
       grouped.set("Unsorted", sorted);
-      return [["Unsorted", sorted]];
+      return [["Unsorted", sorted]] as Array<[string, LibraryEntry[]]>;
     }
     for (const item of sorted) {
       const key = organizeBy === "year"
@@ -70,8 +70,8 @@ export default function YouTubeBox({ category, library, custom, onAdd, onAddMany
         : (item.type || "Uncategorized");
       grouped.set(key, [...(grouped.get(key) ?? []), item]);
     }
-    return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [categoryLibrary, organizeBy]);
+    return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)) as Array<[string, LibraryEntry[]]>;
+  }, [categoryLibrary, organizeBy, category, savedItems]);
   const up = (k: keyof Form) => (e: ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
   const save = async () => {
     const id = ytId(f.url);
