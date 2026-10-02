@@ -57,9 +57,9 @@ function Picker({ b, lib, set, hideCount }: { b: PickerT; lib: MediaItem[]; set:
   );
 }
 
-interface Props { b: BlockT; i: number; n: number; lib: MediaItem[]; set: SetFn; act: (id: string, a: "up" | "down" | "dup" | "del") => void; addSlot: (id: string) => void }
+interface Props { b: BlockT; i: number; n: number; lib: MediaItem[]; set: SetFn; act: (id: string, a: "up" | "down" | "dup" | "del") => void; addSlot: (id: string) => void; onSaveBlock: (block: BlockT) => void }
 
-export default function Block({ b, i, n, lib, set, act, addSlot }: Props) {
+export default function Block({ b, i, n, lib, set, act, addSlot, onSaveBlock }: Props) {
   const isAd = b.kind === "ad";
   return (
     <Card accent={isAd ? AMBER : undefined}>
@@ -68,6 +68,7 @@ export default function Block({ b, i, n, lib, set, act, addSlot }: Props) {
         <CardAction className="flex gap-1">
           <Button variant="outline" size="icon-sm" disabled={i === 0} aria-label="Move up" onClick={() => act(b.id, "up")}>↑</Button>
           <Button variant="outline" size="icon-sm" disabled={i === n - 1} aria-label="Move down" onClick={() => act(b.id, "down")}>↓</Button>
+          <Button variant="outline" size="sm" onClick={() => onSaveBlock(b)}>Save</Button>
           <Button variant="outline" size="sm" onClick={() => act(b.id, "dup")}>Copy</Button>
           <Button variant="destructive" size="sm" onClick={() => act(b.id, "del")}>Delete</Button>
         </CardAction>

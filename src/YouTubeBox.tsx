@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from 'react';
+import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -12,6 +12,7 @@ interface Form { url: string; title: string; type: string; seconds: string | num
 const parseAdBreaks = (value: string): number[] => [...new Set(value.split(",").map(item => Number(item.trim()))
   .filter(minutes => Number.isFinite(minutes) && minutes > 0).map(minutes => Math.round(minutes * 60)))].sort((a, b) => a - b);
 interface Props {
+  category: "all" | "music" | "videos";
   library: MediaItem[];
   custom: MediaItem[];
   onAdd: (c: MediaItem) => void;
@@ -20,30 +21,57 @@ interface Props {
   onRemove: (id: string) => void;
   onTest: (c: MediaItem) => void;
   onAddBlock: (kind: "program" | "ad", id: string) => void;
+  savedItems?: SavedLibraryItem[];
 }
 
-export default function YouTubeBox({ library, custom, onAdd, onAddMany, onUpdate, onRemove, onTest, onAddBlock }: Props) {
-  const emptyForm: Form = { url: "", title: "", type: "video", seconds: 300, adBreaks: "", tags: "", date: "", showTitle: "", seasonNumber: "", episodeNumber: "" };
+export interface SavedLibraryItem {
+  id: string;
+  title: string;
+  type: string;
+  details: string;
+  date?: string;
+  actions?: ReactNode;
+}
+
+type LibraryEntry = { id: string; title: string; type: string; date?: string; media: MediaItem } | ({ media?: never } & SavedLibraryItem);
+
+export default function YouTubeBox({ category, library, custom, onAdd, onAddMany, onUpdate, onRemove, onTest, onAddBlock, savedItems = [] }: Props) {
+  const emptyForm: Form = { url: "", title: "", type: category === "music" ? "music" : "video", seconds: 300, adBreaks: "", tags: "", date: "", showTitle: "", seasonNumber: "", episodeNumber: "" };
   const [f, setF] = useState<Form>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState("");
   const [importingPlaylist, setImportingPlaylist] = useState(false);
   const [playlistStatus, setPlaylistStatus] = useState("");
-  const [organizeBy, setOrganizeBy] = useState("type");
+  const [organizeBy, setOrganizeBy] = useState<"unsorted" | "type" | "year">("unsorted");
   const customIds = new Set(custom.map(c => c.id));
+  const categoryLibrary = library.filter(item => item.type !== "loop" && (category === "music" ? item.type === "music" : category === "videos" ? item.type !== "music" : true));
   const isShow = f.type.trim().toLowerCase() === "show";
-  const mediaTypes = useMemo(() => [...new Set(["video", "movie", "show", "commercial", "bumper", "psa", ...library.map(item => item.type).filter(Boolean)])]
+  const mediaTypes = useMemo(() => [...new Set(["music", "video", "movie", "show", "commercial", "bumper", "psa", ...library.map(item => item.type).filter(Boolean)])]
     .sort().map(type => ({ value: type, label: type })), [library]);
   const groups = useMemo(() => {
-    const grouped = new Map<string, MediaItem[]>();
-    for (const item of library) {
-      const keys = organizeBy === "year" ? [item.date?.slice(0, 4) || "Unknown year"]
-        : organizeBy === "tag" ? (item.tags.length ? item.tags : ["Untagged"]) : [item.type || "Uncategorized"];
-      for (const key of keys) grouped.set(key, [...(grouped.get(key) ?? []), item]);
+    const base: LibraryEntry[] = [
+      ...categoryLibrary.map(item => ({ id: item.id, title: item.title, type: item.type, date: item.date, media: item })),
+      ...(category === "all" ? savedItems : []),
+    ];
+    const sorted = organizeBy === "year"
+      ? [...base].sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.title || "").localeCompare(b.title || ""))
+      : organizeBy === "type"
+        ? [...base].sort((a, b) => (a.type || "").localeCompare(b.type || "") || (a.title || "").localeCompare(b.title || ""))
+        : base;
+    const grouped = new Map<string, LibraryEntry[]>();
+    if (organizeBy === "unsorted") {
+      grouped.set("Unsorted", sorted);
+      return [["Unsorted", sorted]];
+    }
+    for (const item of sorted) {
+      const key = organizeBy === "year"
+        ? (item.date?.slice(0, 4) || "Unknown year")
+        : (item.type || "Uncategorized");
+      grouped.set(key, [...(grouped.get(key) ?? []), item]);
     }
     return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [library, organizeBy]);
+  }, [categoryLibrary, organizeBy]);
   const up = (k: keyof Form) => (e: ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
   const save = async () => {
     const id = ytId(f.url);
@@ -146,7 +174,7 @@ export default function YouTubeBox({ library, custom, onAdd, onAddMany, onUpdate
   return (
     <div className="grid h-full min-h-0 grid-rows-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-4 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)] lg:grid-rows-1">
       <section className="min-h-0 overflow-y-auto border border-[var(--phosphor-dim)] p-3">
-      <h2 className="text-sm uppercase tracking-widest">{editingId ? "Edit video" : "Add YouTube videos"}</h2>
+      <h2 className="text-sm uppercase tracking-widest">{editingId ? `Edit ${category === "music" ? "music" : "video"}` : category === "music" ? "Add music" : category === "videos" ? "Add videos" : "Add media"}</h2>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <Field className="col-span-2" label="YouTube link" htmlFor="yturl"><Input id="yturl" placeholder="https://www.youtube.com/watch?v=…" value={f.url} onChange={up("url")} /></Field>
         <Field className="col-span-2" label={isShow ? "Episode name" : "Title (optional)"} htmlFor="yttitle"><Input id="yttitle" value={f.title} onChange={up("title")} /></Field>
@@ -173,26 +201,33 @@ export default function YouTubeBox({ library, custom, onAdd, onAddMany, onUpdate
       </div>
       </section>
 
-      <section className="min-h-0 overflow-y-auto">
-        <div className="flex items-baseline justify-between border-b border-[var(--phosphor-dim)] pb-2">
-          <h2 className="text-sm uppercase tracking-widest">Library</h2>
-          <span className="text-xs text-[var(--phosphor-dim)]">{library.length} items</span>
+      <section className="min-h-0 overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel)]/20">
+        <div className="flex items-baseline justify-between border-b border-[var(--phosphor-dim)] bg-[var(--panel)]/30 px-3 py-2">
+          <h2 className="text-sm uppercase tracking-widest">{category === "music" ? "Music" : category === "videos" ? "Videos" : "All media"}</h2>
+          <span className="text-xs text-[var(--phosphor-dim)]">{categoryLibrary.length} items</span>
         </div>
-        <Field className="my-2 max-w-48" label="Organize by">
-          <Pick label="Organize library by" value={organizeBy} options={[{ value: "type", label: "Type" }, { value: "year", label: "Year" }, { value: "tag", label: "Tag" }]} onChange={setOrganizeBy} />
-        </Field>
-        {groups.length ? <Accordion multiple className="divide-y divide-[var(--phosphor-dim)]/40">
+        <div className="px-3 pb-3 pt-2">
+          <Field className="mb-3 max-w-48" label="Sort">
+            <Pick label="Sort media" value={organizeBy} options={[{ value: "unsorted", label: "Unsorted" }, { value: "type", label: "Type" }, { value: "year", label: "Year" }]} onChange={value => setOrganizeBy(value as "unsorted" | "type" | "year")} />
+          </Field>
+        </div>
+        {groups.length ? <Accordion multiple className="divide-y divide-[var(--phosphor-dim)]/40 px-3 pb-3">
           {groups.map(([group, items]) => <AccordionItem key={group} value={group}>
             <AccordionTrigger>{group}<span className="ml-auto mr-3 text-xs text-[var(--phosphor-dim)]">{items.length}</span></AccordionTrigger>
             <AccordionContent>
               <div className="divide-y divide-[var(--phosphor-dim)]/30">
-                {items.map(c => {
+                {items.map(entry => {
+                  if (!entry.media) return <div className="flex flex-wrap items-center gap-2 px-3 py-3" key={entry.id}>
+                    <span className="min-w-0 flex-1 text-sm">{entry.title}<small className="block text-[var(--phosphor-dim)]">{entry.type} · {entry.details}</small></span>
+                    {entry.actions}
+                  </div>;
+                  const c = entry.media;
                   const showIndex = c.seasonNumber != null || c.episodeNumber != null
                     ? ` S${String(c.seasonNumber ?? 0).padStart(2, "0")}E${String(c.episodeNumber ?? 0).padStart(2, "0")}` : "";
                   const title = c.type === "show" ? `${c.showTitle || c.title}${showIndex}${c.episodeName ? ` · ${c.episodeName}` : ""}` : c.title;
-                  return <div className="flex flex-wrap items-center gap-2 py-2" key={c.id}>
+                  return <div className="flex flex-wrap items-center gap-2 px-3 py-3" key={c.id}>
                     {(c.thumbnail || c.yt) && <img className="aspect-video w-24 shrink-0 object-cover" src={c.thumbnail || `https://i.ytimg.com/vi/${c.yt}/hqdefault.jpg`} alt="" loading="lazy" />}
-                    <span className="min-w-0 flex-1 text-sm">{title} <small className="block text-[var(--phosphor-dim)]">{c.type} · {c.seconds} sec{c.date ? ` · ${c.date}` : ""}{c.tags.length ? ` · ${c.tags.join(", ")}` : ""}</small></span>
+                    <span className="min-w-0 flex-1 text-sm">{title}<small className="block text-[var(--phosphor-dim)]">{c.type} · {c.seconds} sec{c.date ? ` · ${c.date}` : ""}{c.tags.length ? ` · ${c.tags.join(", ")}` : ""}</small></span>
                     <Button size="sm" variant="outline" onClick={() => onTest(c)}>Test</Button>
                     <Button size="sm" variant="outline" onClick={() => onAddBlock("program", c.id)}>+ Program</Button>
                     <Button size="sm" variant="outline" onClick={() => onAddBlock("ad", c.id)}>+ Ad</Button>
@@ -205,7 +240,7 @@ export default function YouTubeBox({ library, custom, onAdd, onAddMany, onUpdate
               </div>
             </AccordionContent>
           </AccordionItem>)}
-        </Accordion> : <p className="py-5 text-sm text-[var(--phosphor-dim)]">No media in the library.</p>}
+        </Accordion> : <p className="px-3 py-5 text-sm text-[var(--phosphor-dim)]">No {category === "music" ? "music" : category === "videos" ? "videos" : "media"} in the library.</p>}
       </section>
     </div>
   );

@@ -18,11 +18,13 @@ export interface Block extends Picker { at: string; total: number; adSlots: Pick
 /** Blocks, breaks, and ad slots share edit helpers. */
 export type Node = Block | Picker;
 export interface Schedule { name: string; start: string; blocks: Block[]; soundscapeId?: string }
+export interface SavedBlock { name: string; block: Block }
+export interface Channel { id: string; name: string; start: string; scheduleNames: string[] }
 
-export interface MediaItem { id: string; title: string; type: string; tags: string[]; seconds: number; adBreaksSeconds?: number[]; date?: string; url?: string; yt?: string; thumbnail?: string; showTitle?: string; episodeName?: string; seasonNumber?: number; episodeNumber?: number }
+export interface MediaItem { id: string; title: string; type: string; tags: string[]; seconds: number; adBreaksSeconds?: number[]; date?: string; url?: string; yt?: string; audioFileId?: string; thumbnail?: string; showTitle?: string; episodeName?: string; seasonNumber?: number; episodeNumber?: number }
 
 export type SoundLayerKind = "file" | "white" | "pink" | "brown" | "tone" | "rain" | "thunder" | "spaceship";
-export interface SoundLayer { id: string; name: string; kind: SoundLayerKind; volume: number; enabled: boolean; frequency?: number; density?: number; falloff?: number; lowPassHz?: number; midPassHz?: number; highPassHz?: number }
+export interface SoundLayer { id: string; name: string; kind: SoundLayerKind; volume: number; enabled: boolean; audioFileId?: string; frequency?: number; density?: number; falloff?: number; lowPassHz?: number; midPassHz?: number; highPassHz?: number }
 export interface SoundscapePreset { id: string; name: string; layers: SoundLayer[] }
 
 /** One playable piece of a run: a part of a program, an ad, or off-air filler. Times are in minutes. */

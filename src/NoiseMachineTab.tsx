@@ -150,7 +150,7 @@ const NoiseMachineTab = forwardRef<NoiseMachineHandle, Props>(function NoiseMach
         for (const layer of layers.filter(item => item.enabled)) {
           let source: AudioBufferSourceNode | OscillatorNode;
           if (layer.kind === "file") {
-            const blob = await loadSoundFile(layer.id);
+            const blob = await loadSoundFile(layer.audioFileId ?? layer.id);
             if (!blob) throw new Error(`Missing audio file: ${layer.name}`);
             const buffer = await context.decodeAudioData(await blob.arrayBuffer());
             source = context.createBufferSource();
@@ -325,7 +325,7 @@ const NoiseMachineTab = forwardRef<NoiseMachineHandle, Props>(function NoiseMach
     }
   };
   const removeLayer = async (layer: SoundLayer) => {
-    if (layer.kind === "file") await deleteSoundFile(layer.id).catch(() => {});
+    if (layer.kind === "file" && !layer.audioFileId) await deleteSoundFile(layer.id).catch(() => {});
     onChange(layers.filter(item => item.id !== layer.id));
   };
   const choosePlaybackMode = async (mode: PlaybackMode) => {
@@ -369,7 +369,7 @@ const NoiseMachineTab = forwardRef<NoiseMachineHandle, Props>(function NoiseMach
 
   return (
     <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[minmax(18rem,0.75fr)_minmax(0,1.25fr)]">
-      <section className="min-h-0 space-y-4 overflow-y-auto border border-[var(--phosphor-dim)] p-4">
+      <section className="min-h-0 space-y-4 overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel)]/20 p-4">
         <div className="flex items-center gap-3">
           <AudioLines className="size-5 text-phosphor" aria-hidden="true" />
           <div>
@@ -418,12 +418,12 @@ const NoiseMachineTab = forwardRef<NoiseMachineHandle, Props>(function NoiseMach
         {error && <p role="alert" className="text-sm text-[var(--warning)]">{error}</p>}
       </section>
 
-      <section className="min-h-0 overflow-y-auto">
-        <div className="mb-2 flex items-baseline justify-between border-b border-[var(--phosphor-dim)] pb-2">
+      <section className="min-h-0 overflow-hidden border border-[var(--phosphor-dim)] bg-[var(--panel)]/20">
+        <div className="mb-0 flex items-baseline justify-between border-b border-[var(--phosphor-dim)] bg-[var(--panel)]/30 px-3 py-2">
           <h2 className="text-sm uppercase tracking-widest">Sound layers</h2>
           <span className="text-xs text-[var(--phosphor-dim)]">{layers.length}</span>
         </div>
-        <div className="divide-y divide-[var(--phosphor-dim)]/40">
+        <div className="divide-y divide-[var(--phosphor-dim)]/40 px-3 pb-3 pt-2">
           {layers.map(layer => (
             <div key={layer.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 py-3">
               <Switch checked={layer.enabled} onCheckedChange={checked => updateLayer(layer.id, { enabled: checked })} aria-label={`Toggle ${layer.name}`} />
